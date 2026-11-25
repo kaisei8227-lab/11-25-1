@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gothic Duel - デッキ編成 ＆ クラフト</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body {
+            font-family: 'EB Garamond', serif;
+            background: #080d1a;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .top-control-bar {
+            background: linear-gradient(180deg, rgba(15, 25, 45, 0.95) 0%, rgba(8, 14, 26, 0.95) 100%);
+            border-bottom: 1.5px solid #c9a050;
+            padding: 8px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        .header-row-1 { display: flex; justify-content: space-between; align-items: center; }
+        .left-info-group { display: flex; align-items: center; gap: 10px; }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid #c9a050; color: #c9a050;
+            padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;
+        }
+        .btn-back:hover { background: rgba(201, 160, 80, 0.2); }
+
+        .deck-select-dropdown {
+            background: rgba(10, 16, 28, 0.9); border: 1px solid #c9a050; border-radius: 4px;
+            color: #ffd700; padding: 4px 8px; font-size: 13px; font-weight: bold; cursor: pointer;
+        }
+
+        .deck-name-input {
+            background: rgba(10, 16, 28, 0.8); border: 1px solid #3c5473; border-radius: 4px;
+            color: #f1e6cf; padding: 4px 10px; font-size: 14px; font-weight: bold; width: 140px;
+        }
+
+        /* ジェム所持数表示バッジ */
+        .gem-badge-box {
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(12, 18, 28, 0.9); border: 1px solid #00f0ff; border-radius: 15px;
+            padding: 4px 12px; font-size: 12px; font-weight: bold; color: #00f0ff;
+        }
+
+        .action-btns { display: flex; gap: 8px; }
+        .btn-action {
+            background: linear-gradient(135deg, #2b4366, #121f33); border: 1px solid #5c96f5; color: #fff;
+            padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+        }
+        .btn-action:hover { border-color: #ffd700; transform: translateY(-1px); }
+        .btn-save { background: linear-gradient(135deg, #c9a050, #8a5a00); border-color: #ffd700; color: #000; }
+
+        .header-row-2 {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            background: rgba(5, 10, 20, 0.6); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(201, 160, 80, 0.2);
+        }
+        .cost-graph { display: flex; align-items: flex-end; gap: 8px; height: 32px; }
+        .cost-bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .cost-bar-val { font-size: 9px; color: #a2c497; font-weight: bold; }
+        .cost-bar-bg { width: 14px; height: 20px; background: rgba(255, 255, 255, 0.08); border-radius: 2px; display: flex; align-items: flex-end; overflow: hidden; }
+        .cost-bar-fill { width: 100%; height: 0%; background: #00f0ff; transition: height 0.3s; }
+        .cost-bar-num { width: 14px; height: 14px; border-radius: 50%; background: #1d334e; border: 1px solid #5c96f5; font-size: 9px; color: #fff; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+
+        .deck-breakdown { display: flex; align-items: center; gap: 16px; font-size: 12px; }
+        .breakdown-item { display: flex; gap: 6px; font-weight: bold; }
+        .breakdown-label { color: #8ba880; }
+        .total-count-badge { font-family: 'Cinzel Decorative', serif; font-size: 20px; font-weight: bold; color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+
+        .deck-tray-area {
+            flex: 1; background: radial-gradient(circle at 50% 50%, rgba(20, 32, 50, 0.7) 0%, rgba(5, 10, 20, 0.95) 100%);
+            padding: 12px 20px; overflow-x: auto; overflow-y: hidden; display: flex; align-items: center; gap: 10px; position: relative; border-bottom: 2px solid #1a2c42;
+        }
+        .tray-empty-hint { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: rgba(201, 160, 80, 0.4); font-size: 14px; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+        .tray-card {
+            width: 85px; height: 125px; background: linear-gradient(145deg, #18283b, #0d1624); border: 1.5px solid #3c5473; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; justify-content: space-between; position: relative; cursor: pointer; flex-shrink: 0; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+        }
+        .tray-card:hover { border-color: #ff4d4d; transform: translateY(-4px); }
+        .card-cost-badge { position: absolute; top: -5px; left: -5px; width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle, #5c96f5, #172d54); border: 1px solid #fff; color: #fff; font-size: 11px; font-weight: bold; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px #000; }
+        .card-count-badge { position: absolute; top: 3px; right: 4px; background: rgba(0, 0, 0, 0.85); color: #ffd700; border: 1px solid #c9a050; padding: 0 5px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .card-name { font-size: 10px; font-weight: bold; color: #f1e6cf; text-align: center; margin-top: 16px; line-height: 1.2; }
+        .card-stats { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; }
+        .card-atk { color: #00f0ff; }
+        .card-hp { color: #ff4d4d; }
+
+        .bottom-pool-area { height: 250px; background: rgba(10, 16, 26, 0.98); border-top: 1.5px solid #c9a050; padding: 10px 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .class-filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .class-tab { background: rgba(20, 32, 50, 0.8); border: 1px solid #3c5473; color: #8ba880; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.2s; }
+        .class-tab:hover { border-color: #ffd700; color: #fff; }
+        .class-tab.active { background: linear-gradient(135deg, #c9a050, #8a5a00); border-color: #ffd700; color: #000; }
+
+        .pool-cards-wrapper { display: flex; align-items: center; justify-content: space-between; flex: 1; }
+        .arrow-btn { background: rgba(20, 32, 50, 0.8); border: 1px solid #3c5473; color: #c9a050; width: 36px; height: 75px; border-radius: 6px; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        .arrow-btn:hover { border-color: #ffd700; background: #233b57; }
+
+        .pool-grid { display: flex; gap: 12px; justify-content: center; align-items: center; flex: 1; padding: 0 10px; }
+        .pool-card { width: 90px; height: 130px; background: linear-gradient(145deg, #1c2b3d, #0e1724); border: 2px solid #4a668c; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; justify-content: space-between; position: relative; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.7); }
+        .pool-card:hover { border-color: #ffd700; transform: translateY(-4px) scale(1.03); }
+        .pool-card.disabled { opacity: 0.4; filter: grayscale(0.8); cursor: not-allowed; }
+
+        .pool-footer-bar { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .page-indicator { font-size: 12px; color: #c9a050; font-weight: bold; }
+
+        /* カード詳細・クラフトモーダル */
+        #card-modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 2000; justify-content: center; align-items: center;
+        }
+        .card-detail-modal {
+            background: linear-gradient(145deg, #181124, #0d0914); border: 2px solid #c9a050; border-radius: 10px;
+            width: 340px; padding: 20px; color: #f1e6cf; box-shadow: 0 0 30px rgba(201, 160, 80, 0.4); display: flex; flex-direction: column; gap: 10px;
+        }
+        .modal-card-header { display: flex; justify-content: space-between; font-size: 11px; color: #a792ba; }
+        .modal-class-tag, .modal-rarity-tag { background: #2a1f35; padding: 2px 8px; border-radius: 4px; border: 1px solid #5a486e; }
+        .modal-card-title { font-family: 'Cinzel Decorative', serif; font-size: 20px; color: #ffd700; text-align: center; margin-bottom: 2px; }
+        .modal-card-stats-box { display: flex; justify-content: space-around; background: rgba(0,0,0,0.5); border: 1px solid #4a3e56; border-radius: 6px; padding: 6px; font-size: 13px; font-weight: bold; color: #00f0ff; }
+        .modal-section-title { font-size: 11px; color: #c9a050; border-bottom: 1px solid #3d2f4d; padding-bottom: 2px; margin-top: 2px; }
+        .modal-card-desc, .modal-card-evolve, .modal-card-note { font-size: 12px; color: #e0d8e8; background: rgba(15,10,23,0.6); padding: 8px; border-radius: 4px; min-height: 30px; line-height: 1.4; }
+        
+        /* クラフトボタン群 */
+        .craft-action-group { display: flex; gap: 8px; margin-top: 4px; }
+        .btn-craft {
+            flex: 1; background: linear-gradient(135deg, #00f0ff, #0077aa); border: none; color: #000;
+            font-weight: bold; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; text-align: center;
+        }
+        .btn-craft:hover { filter: brightness(1.1); }
+        .btn-salvage {
+            flex: 1; background: linear-gradient(135deg, #e53e3e, #9b2c2c); border: none; color: #fff;
+            font-weight: bold; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; text-align: center;
+        }
+        .btn-salvage:hover { filter: brightness(1.1); }
+        .modal-close-btn { margin-top: 4px; background: linear-gradient(135deg, #c9a050, #8a5a00); border: none; color: #000; font-weight: bold; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="top-control-bar">
+        <div class="header-row-1">
+            <div class="left-info-group">
+                <button class="btn-back" onclick="location.href='home.html'">‹ 戻る</button>
+                <button class="btn-back" style="color: #ffd700; border-color: #ffd700;" onclick="location.href='catalog.html'">📖 図鑑</button>
+                <select id="deck-slot-select" class="deck-select-dropdown" onchange="switchDeckSlot(this.value)">
+                    <option value="0">デッキ 1</option>
+                    <option value="1">デッキ 2</option>
+                    <option value="2">デッキ 3</option>
+                </select>
+                <input type="text" id="deck-name-input" class="deck-name-input" value="カスタムデッキ1">
+            </div>
+
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div class="gem-badge-box" title="所持ジェム（クラフト用）">
+                    <span>💎</span> <span id="user-gem-count">1500</span>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-action btn-save" onclick="saveDeck()">保存する</button>
+                    <button class="btn-action" onclick="autoBuildDeck()">自動編成</button>
+                    <button class="btn-action" onclick="clearDeck()">クリア</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-row-2">
+            <div class="cost-graph" id="cost-graph"></div>
+            <div class="deck-breakdown">
+                <div class="breakdown-item"><span class="breakdown-label">FOLLOWER</span><span id="count-follower">0</span></div>
+                <div class="breakdown-item"><span class="breakdown-label">SPELL</span><span id="count-spell">0</span></div>
+                <div class="breakdown-item"><span class="breakdown-label">AMULET</span><span id="count-amulet">0</span></div>
+                <div class="total-count-badge"><span id="total-card-count">0</span> / 40</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="deck-tray-area" id="deck-tray">
+        <div class="tray-empty-hint" id="tray-hint">
+            <span style="font-size: 28px;">🎴</span>
+            <span>カードをタップしてデッキ（40枚）に編入してください（右クリック/長押しで詳細・生成分解）</span>
+        </div>
+    </div>
+
+    <div class="bottom-pool-area">
+        <div class="class-filter-bar" id="class-filter-bar"></div>
+
+        <div class="pool-cards-wrapper">
+            <button class="arrow-btn" onclick="changePage(-1)">❮</button>
+            <div class="pool-grid" id="pool-grid"></div>
+            <button class="arrow-btn" onclick="changePage(1)">❯</button>
+        </div>
+
+        <div class="pool-footer-bar">
+            <div style="font-size: 11px; color: #8ba880;" id="card-total-info">読込中...</div>
+            <div class="page-indicator">Page <span id="current-page">1</span> / <span id="total-page">1</span></div>
+            <div style="font-size: 11px; color: #a792ba;">※ 同名カードは最大3枚まで</div>
+        </div>
+    </div>
+
+    <!-- カード詳細 ＆ クラフトモーダル -->
+    <div id="card-modal-overlay" class="overlay-screen" onclick="closeCardModal()">
+        <div class="card-detail-modal" onclick="event.stopPropagation()">
+            <div class="modal-card-header">
+                <span id="modal-card-class" class="modal-class-tag">貴族</span>
+                <span id="modal-card-rarity" class="modal-rarity-tag">一般</span>
+            </div>
+            <div class="modal-card-title" id="modal-card-name">カード名</div>
+            
+            <div class="modal-card-stats-box">
+                <div>コスト: <span id="modal-card-cost">2</span></div>
+                <div>攻撃力: <span id="modal-card-atk">2</span></div>
+                <div>体力: <span id="modal-card-hp">4</span></div>
+            </div>
+
+            <div class="modal-section-title">■ 効果テキスト</div>
+            <div class="modal-card-desc" id="modal-card-desc">効果テキスト</div>
+
+            <div class="modal-section-title">■ 進化時効果</div>
+            <div class="modal-card-evolve" id="modal-card-evolve">進化時効果なし</div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #ffd700; margin-top: 4px;">
+                <span>所持枚数: <strong id="modal-owned-count">0</strong> 枚</span>
+                <span>生成コスト: <strong>💎 250</strong> / 分解: <strong>💎 50</strong></span>
+            </div>
+
+            <!-- クラフトアクションボタン -->
+            <div class="craft-action-group">
+                <button class="btn-craft" onclick="craftCard()">💎 生成する (+1)</button>
+                <button class="btn-salvage" onclick="salvageCard()">♻️ 分解する (-1)</button>
+            </div>
+
+            <button class="modal-close-btn" onclick="closeCardModal()">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        const MAX_DECK_SIZE = 40;
+        const MAX_SAME_CARD = 3;
+        let CARD_DATABASE = [];
+        let activeClassFilter = 'すべて';
+        const cardClasses = ['すべて', '貴族', '怪物', '幽霊', '無所属', '魔女', '人形', '狩人', '海賊'];
+        let allDecks = [], activeSlot = 0, currentDeck = [], currentPage = 1;
+        const cardsPerPage = 6;
+        let currentModalCard = null; // 現在モーダルで開いているカード
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCardCSV();
+            loadUserData();
+            loadAllDecks();
+            renderCostGraph();
+            renderClassFilterTabs();
+            renderAll();
+        });
+
+        function loadUserData() {
+            let user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.gem === undefined) {
+                user.gem = 1500; // 初期ジェム
+                localStorage.setItem('user', JSON.stringify(user));
+            }
+            document.getElementById('user-gem-count').innerText = user.gem;
+        }
+
+        async function loadCardCSV() {
+            try {
+                const response = await fetch('card.csv');
+                if (!response.ok) throw new Error();
+                CARD_DATABASE = parseCardCSV(await response.text());
+            } catch (error) {
+                CARD_DATABASE = [{ id: 1, class: '貴族', name: '呪われた令嬢', type: 'FOLLOWER', cost: 2, attack: 2, hp: 4, desc: '自分の場の一体の攻撃力+1', evolveDesc: '', note: '' }];
+            }
+        }
+
+        function parseCardCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const cards = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                if (values.length < headers.length) continue;
+                let card = {};
+                headers.forEach((h, idx) => {
+                    let val = values[idx];
+                    if (['No', '攻撃力', '体力', 'コスト'].includes(h) && !isNaN(val) && val !== '') val = Number(val);
+                    card[h] = val;
+                });
+                cards.push({
+                    id: card['No'] || i, class: card['クラス'] || '無所属', name: card['カード名'] || '不明',
+                    type: card['種別'] === '魔法' ? 'SPELL' : 'FOLLOWER', rarity: card['レアリティ'] || '一般',
+                    cost: isNaN(card['コスト']) ? 1 : card['コスト'], attack: isNaN(card['攻撃力']) ? 0 : card['攻撃力'],
+                    hp: isNaN(card['体力']) ? 0 : card['体力'], desc: card['効果テキスト'] || '特になし',
+                    evolveDesc: card['進化時効果'] || '', note: card['備考'] || '特になし'
+                });
+            }
+            return cards;
+        }
+
+        function loadAllDecks() {
+            const saved = localStorage.getItem('userDecksList');
+            activeSlot = parseInt(localStorage.getItem('activeDeckIndex') || '0', 10);
+            if (saved) { try { allDecks = JSON.parse(saved); } catch(e) { allDecks = []; } }
+            while (allDecks.length < 3) allDecks.push({ name: `デッキ ${allDecks.length + 1}`, cards: [] });
+            document.getElementById('deck-slot-select').value = activeSlot;
+            loadCurrentSlotData();
+        }
+
+        function loadCurrentSlotData() {
+            const target = allDecks[activeSlot] || { name: `デッキ ${activeSlot + 1}`, cards: [] };
+            currentDeck = target.cards ? JSON.parse(JSON.stringify(target.cards)) : [];
+            document.getElementById('deck-name-input').value = target.name || `デッキ ${activeSlot + 1}`;
+        }
+
+        function switchDeckSlot(slotIndex) {
+            activeSlot = parseInt(slotIndex, 10);
+            localStorage.setItem('activeDeckIndex', activeSlot);
+            loadCurrentSlotData();
+            renderAll();
+        }
+
+        function renderClassFilterTabs() {
+            const bar = document.getElementById('class-filter-bar');
+            bar.innerHTML = '';
+            cardClasses.forEach(cls => {
+                const btn = document.createElement('div');
+                btn.className = `class-tab ${activeClassFilter === cls ? 'active' : ''}`;
+                btn.innerText = cls;
+                btn.onclick = () => { activeClassFilter = cls; currentPage = 1; renderClassFilterTabs(); renderPoolGrid(); };
+                bar.appendChild(btn);
+            });
+        }
+
+        function renderAll() { renderDeckTray(); renderPoolGrid(); updateBreakdownAndGraph(); }
+
+        function renderCostGraph() {
+            const container = document.getElementById('cost-graph');
+            container.innerHTML = '';
+            for (let c = 1; c <= 8; c++) {
+                const col = document.createElement('div');
+                col.className = 'cost-bar-col';
+                col.innerHTML = `<div class="cost-bar-val" id="cost-val-${c}">0</div><div class="cost-bar-bg"><div class="cost-bar-fill" id="cost-fill-${c}"></div></div><div class="cost-bar-num">${c === 8 ? '8+' : c}</div>`;
+                container.appendChild(col);
+            }
+        }
+
+        function renderDeckTray() {
+            const tray = document.getElementById('deck-tray');
+            const hint = document.getElementById('tray-hint');
+            tray.querySelectorAll('.tray-card').forEach(c => c.remove());
+            let totalCount = currentDeck.reduce((sum, c) => sum + c.count, 0);
+            hint.style.display = totalCount === 0 ? 'flex' : 'none';
+            currentDeck.sort((a, b) => a.cost - b.cost);
+            currentDeck.forEach((card, index) => {
+                const el = document.createElement('div');
+                el.className = 'tray-card';
+                el.onclick = () => removeCardFromDeck(index);
+                el.oncontextmenu = (e) => { e.preventDefault(); openCardModal(card); };
+                attachLongPressEvent(el, card);
+                el.innerHTML = `<div class="card-cost-badge">${card.cost}</div><div class="card-count-badge">×${card.count}</div><div class="card-name">${card.name}</div><div class="card-stats"><span class="card-atk">${card.type === 'FOLLOWER' ? '⚔' + card.attack : ''}</span><span class="card-hp">${card.type === 'FOLLOWER' ? '❤' + card.hp : ''}</span></div>`;
+                tray.appendChild(el);
+            });
+        }
+
+        function renderPoolGrid() {
+            const grid = document.getElementById('pool-grid');
+            grid.innerHTML = '';
+            let filtered = activeClassFilter === 'すべて' ? CARD_DATABASE : CARD_DATABASE.filter(c => c.class === activeClassFilter);
+            document.getElementById('card-total-info').innerText = `該当: ${filtered.length}枚`;
+            const totalPages = Math.ceil(filtered.length / cardsPerPage) || 1;
+            document.getElementById('total-page').innerText = totalPages;
+            document.getElementById('current-page').innerText = currentPage;
+            const start = (currentPage - 1) * cardsPerPage;
+            filtered.slice(start, start + cardsPerPage).forEach(card => {
+                let user = JSON.parse(localStorage.getItem('user') || '{}');
+                user.ownedCards = user.ownedCards || {};
+                const ownedCount = user.ownedCards[card.id] || 0;
+
+                const inDeck = currentDeck.find(c => c.id === card.id);
+                const count = inDeck ? inDeck.count : 0;
+                const el = document.createElement('div');
+                el.className = `pool-card`;
+                el.onclick = () => addCardToDeck(card);
+                el.oncontextmenu = (e) => { e.preventDefault(); openCardModal(card); };
+                attachLongPressEvent(el, card);
+                el.innerHTML = `<div class="card-cost-badge">${card.cost}</div><div class="card-count-badge" style="color:#00f0ff;">所持:${ownedCount}</div><div class="card-name">${card.name}</div><div class="card-stats"><span class="card-atk">${card.type === 'FOLLOWER' ? '⚔' + card.attack : ''}</span><span class="card-hp">${card.type === 'FOLLOWER' ? '❤' + card.hp : ''}</span></div>`;
+                grid.appendChild(el);
+            });
+        }
+
+        function addCardToDeck(card) {
+            if (currentDeck.reduce((s, c) => s + c.count, 0) >= MAX_DECK_SIZE) return alert('上限40枚です');
+            const existing = currentDeck.find(c => c.id === card.id);
+            if (existing) { if (existing.count >= MAX_SAME_CARD) return; existing.count++; }
+            else { currentDeck.push({ ...card, count: 1 }); }
+            renderAll();
+        }
+
+        function removeCardFromDeck(index) {
+            if (currentDeck[index].count > 1) currentDeck[index].count--;
+            else currentDeck.splice(index, 1);
+            renderAll();
+        }
+
+        function updateBreakdownAndGraph() {
+            let followers = 0, spells = 0, amulets = 0, costCounts = {};
+            currentDeck.forEach(card => {
+                if (card.type === 'FOLLOWER') followers += card.count; else spells += card.count;
+                let cKey = card.cost >= 8 ? 8 : card.cost;
+                costCounts[cKey] = (costCounts[cKey] || 0) + card.count;
+            });
+            document.getElementById('count-follower').innerText = followers;
+            document.getElementById('count-spell').innerText = spells;
+            document.getElementById('count-amulet').innerText = amulets;
+            document.getElementById('total-card-count').innerText = followers + spells + amulets;
+            for (let c = 1; c <= 8; c++) {
+                const count = costCounts[c] || 0;
+                document.getElementById(`cost-val-${c}`).innerText = count;
+                document.getElementById(`cost-fill-${c}`).style.height = Math.min(100, (count / 12) * 100) + '%';
+            }
+        }
+
+        function changePage(dir) {
+            let filtered = activeClassFilter === 'すべて' ? CARD_DATABASE : CARD_DATABASE.filter(c => c.class === activeClassFilter);
+            currentPage = Math.max(1, Math.min(Math.ceil(filtered.length / cardsPerPage) || 1, currentPage + dir));
+            renderPoolGrid();
+        }
+
+        function clearDeck() { currentDeck = []; renderAll(); }
+        function autoBuildDeck() {
+            currentDeck = []; let total = 0;
+            (activeClassFilter === 'すべて' ? CARD_DATABASE : CARD_DATABASE.filter(c => c.class === activeClassFilter)).forEach(card => {
+                if (total >= MAX_DECK_SIZE) return;
+                const add = Math.min(3, MAX_DECK_SIZE - total);
+                currentDeck.push({ ...card, count: add }); total += add;
+            });
+            renderAll();
+        }
+
+        function saveDeck() {
+            const name = document.getElementById('deck-name-input').value || `デッキ ${activeSlot + 1}`;
+            allDecks[activeSlot] = { name, cards: currentDeck };
+            localStorage.setItem('userDecksList', JSON.stringify(allDecks));
+            alert(`『${name}』を保存しました！`);
+            location.href = 'home.html';
+        }
+
+        // --- クラフトシステム（生成・分解） ---
+        function openCardModal(card) {
+            currentModalCard = card;
+            document.getElementById('modal-card-class').innerText = card.class || '無所属';
+            document.getElementById('modal-card-rarity').innerText = card.rarity || '一般';
+            document.getElementById('modal-card-name').innerText = card.name || '不明';
+            document.getElementById('modal-card-cost').innerText = card.cost ?? 1;
+            document.getElementById('modal-card-atk').innerText = card.attack ?? 0;
+            document.getElementById('modal-card-hp').innerText = card.hp ?? 0;
+            document.getElementById('modal-card-desc').innerText = card.desc || '効果なし';
+            document.getElementById('modal-card-evolve').innerText = card.evolveDesc || '進化時効果なし';
+            
+            updateModalOwnedCount();
+            document.getElementById('card-modal-overlay').style.display = 'flex';
+        }
+
+        function updateModalOwnedCount() {
+            if (!currentModalCard) return;
+            let user = JSON.parse(localStorage.getItem('user') || '{}');
+            user.ownedCards = user.ownedCards || {};
+            const count = user.ownedCards[currentModalCard.id] || 0;
+            document.getElementById('modal-owned-count').innerText = count;
+        }
+
+        function craftCard() {
+            if (!currentModalCard) return;
+            let user = JSON.parse(localStorage.getItem('user') || '{}');
+            user.gem = user.gem || 1500;
+            const cost = 250;
+
+            if (user.gem < cost) {
+                alert('ジェムが足りません！');
+                return;
+            }
+
+            user.gem -= cost;
+            user.ownedCards = user.ownedCards || {};
+            user.ownedCards[currentModalCard.id] = (user.ownedCards[currentModalCard.id] || 0) + 1;
+
+            localStorage.setItem('user', JSON.stringify(user));
+            document.getElementById('user-gem-count').innerText = user.gem;
+            updateModalOwnedCount();
+            renderPoolGrid();
+            alert(`『${currentModalCard.name}』を1枚生成しました！ (-💎250)`);
+        }
+
+        function salvageCard() {
+            if (!currentModalCard) return;
+            let user = JSON.parse(localStorage.getItem('user') || '{}');
+            user.ownedCards = user.ownedCards || {};
+            const count = user.ownedCards[currentModalCard.id] || 0;
+
+            if (count <= 0) {
+                alert('分解できるカードを所持していません。');
+                return;
+            }
+
+            user.ownedCards[currentModalCard.id]--;
+            user.gem = (user.gem || 1500) + 50;
+
+            localStorage.setItem('user', JSON.stringify(user));
+            document.getElementById('user-gem-count').innerText = user.gem;
+            updateModalOwnedCount();
+            renderPoolGrid();
+            alert(`『${currentModalCard.name}』を1枚分解しました (+💎50)`);
+        }
+
+        function closeCardModal() { 
+            document.getElementById('card-modal-overlay').style.display = 'none'; 
+            currentModalCard = null;
+        }
+
+        function attachLongPressEvent(element, card) {
+            let timer = null;
+            element.addEventListener('touchstart', () => {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => { openCardModal(card); if (navigator.vibrate) navigator.vibrate(50); }, 500);
+            }, { passive: true });
+            element.addEventListener('touchend', () => { if (timer) clearTimeout(timer); }, { passive: true });
+            element.addEventListener('touchmove', () => { if (timer) clearTimeout(timer); }, { passive: true });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gothic Duel - ショップ ＆ パック開封</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body {
+            font-family: 'EB Garamond', serif;
+            background: #080d1a;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* ヘッダー */
+        .shop-header {
+            background: rgba(15, 25, 45, 0.95); border-bottom: 1.5px solid #c9a050;
+            padding: 12px 24px; display: flex; justify-content: space-between; align-items: center;
+            z-index: 10;
+        }
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid #c9a050; color: #c9a050;
+            padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;
+        }
+        .btn-back:hover { background: rgba(201, 160, 80, 0.2); }
+        .shop-title { font-family: 'Cinzel Decorative', serif; font-size: 20px; color: #ffd700; }
+        
+        .user-assets { display: flex; gap: 16px; font-weight: bold; font-size: 14px; }
+        .asset-chip { background: rgba(12, 18, 28, 0.9); border: 1px solid #c9a050; padding: 4px 12px; border-radius: 12px; display: flex; gap: 6px; align-items: center; }
+
+        /* ショップメインエリア */
+        .shop-main {
+            flex: 1; background: radial-gradient(circle at 50% 50%, rgba(30, 20, 50, 0.7) 0%, rgba(5, 10, 20, 0.98) 100%);
+            display: flex; justify-content: center; align-items: center; gap: 30px; padding: 20px;
+        }
+        .pack-banner {
+            width: 260px; height: 380px; background: linear-gradient(145deg, #2b183b, #11091a);
+            border: 2.5px solid #c9a050; border-radius: 14px; padding: 20px; display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between; text-align: center; cursor: pointer;
+            box-shadow: 0 0 30px rgba(201, 160, 80, 0.3); transition: all 0.3s;
+        }
+        .pack-banner:hover { transform: translateY(-8px); border-color: #ffd700; box-shadow: 0 0 45px rgba(255, 215, 0, 0.5); }
+        .pack-icon { font-size: 70px; margin-top: 30px; filter: drop-shadow(0 0 10px rgba(255,215,0,0.6)); }
+        .pack-name { font-family: 'Cinzel Decorative', serif; font-size: 18px; color: #ffd700; font-weight: bold; }
+        .pack-desc { font-size: 12px; color: #c9a050; line-height: 1.4; }
+        .btn-buy-pack {
+            width: 100%; background: linear-gradient(135deg, #c9a050, #8a5a00); border: 1px solid #ffd700;
+            color: #000; font-weight: bold; padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer;
+            font-family: 'Cinzel Decorative', serif;
+        }
+        .btn-buy-pack:hover { filter: brightness(1.1); }
+
+        /* --- ガチャ開封演出モーダル --- */
+        .gacha-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.92); backdrop-filter: blur(10px);
+            display: none; justify-content: center; align-items: center; z-index: 3000;
+            flex-direction: column;
+        }
+        .gacha-container {
+            display: flex; gap: 16px; justify-content: center; align-items: center;
+            perspective: 1000px;
+        }
+        .gacha-card {
+            width: 150px; height: 215px; background: linear-gradient(145deg, #1c2b3d, #0e1724);
+            border: 2.5px solid #c9a050; border-radius: 10px; padding: 12px; display: flex; flex-direction: column;
+            justify-content: space-between; position: relative; cursor: pointer; transform: scale(0.9);
+            box-shadow: 0 0 25px rgba(201, 160, 80, 0.5); transition: transform 0.3s;
+        }
+        .gacha-card:hover { transform: scale(1.02); }
+        .gacha-card.rare { border-color: #00f0ff; box-shadow: 0 0 35px rgba(0, 240, 255, 0.8); }
+        .gacha-card.ssr { border-color: #ffd700; box-shadow: 0 0 50px rgba(255, 215, 0, 1); animation: ssrGlow 1.5s infinite alternate; }
+        @keyframes ssrGlow { 0% { box-shadow: 0 0 25px #ffd700; } 100% { box-shadow: 0 0 50px #ff3333; } }
+
+        .btn-gacha-close {
+            margin-top: 30px; background: linear-gradient(135deg, #c9a050, #8a5a00);
+            border: 2px solid #ffd700; color: #000; font-family: 'Cinzel Decorative', serif; font-weight: bold;
+            padding: 12px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="shop-header">
+        <button class="btn-back" onclick="location.href='home.html'">‹ ホームへ戻る</button>
+        <div class="shop-title">GOTHIC SHOP</div>
+        <div class="user-assets">
+            <div class="asset-chip"><span>🪙</span> <span id="shop-coin">0</span></div>
+            <div class="asset-chip" style="border-color: #00f0ff; color: #00f0ff;"><span>💎</span> <span id="shop-gem">1500</span></div>
+        </div>
+    </header>
+
+    <main class="shop-main">
+        <!-- 第1弾パック -->
+        <div class="pack-banner">
+            <div class="pack-icon">🃏</div>
+            <div>
+                <div class="pack-name">第1弾：夜想曲の奏者</div>
+                <div class="pack-desc" style="margin-top: 6px;">ゴシック初期の強力な貴族や怪物フォロワーが多数収録された基本パック。</div>
+            </div>
+            <button class="btn-buy-pack" onclick="buyCardPack(100, 5)">100 コイン (5枚)</button>
+        </div>
+
+        <!-- 第2弾パック -->
+        <div class="pack-banner" style="border-color: #00f0ff; box-shadow: 0 0 30px rgba(0,240,255,0.3);">
+            <div class="pack-icon" style="filter: drop-shadow(0 0 10px rgba(0,240,255,0.8));">🔮</div>
+            <div>
+                <div class="pack-name" style="color: #00f0ff;">第2弾：禁断の魔導書</div>
+                <div class="pack-desc" style="margin-top: 6px;">特殊な魔法や強力なアミュレットが秘められた拡張パック。</div>
+            </div>
+            <button class="btn-buy-pack" style="background: linear-gradient(135deg, #00f0ff, #0077aa); border-color: #fff; color: #000;" onclick="buyCardPack(200, 5)">200 コイン (5枚)</button>
+        </div>
+    </main>
+
+    <!-- ガチャ開封演出モーダル -->
+    <div id="gacha-modal" class="gacha-overlay">
+        <div style="font-family: 'Cinzel Decorative', serif; font-size: 26px; color: #ffd700; margin-bottom: 25px; text-shadow: 0 0 15px rgba(255,215,0,0.8);">
+            CARD PACK OPENED!
+        </div>
+        <div class="gacha-container" id="gacha-cards-box">
+            <!-- 獲得したカードが動的に並びます -->
+        </div>
+        <button id="btn-gacha-finish" class="btn-gacha-close" onclick="closeGachaModal()">結果を保存して閉じる</button>
+    </div>
+
+    <script>
+        let CARD_DATABASE = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCardCSV();
+            updateUserAssetsDisplay();
+        });
+
+        async function loadCardCSV() {
+            try {
+                const res = await fetch('card.csv');
+                if (!res.ok) throw new Error();
+                const text = await res.text();
+                CARD_DATABASE = parseCardCSV(text);
+            } catch (e) {
+                // フォールバック用データベース
+                CARD_DATABASE = [
+                    { id: 1, class: '貴族', name: '呪われた令嬢', type: 'FOLLOWER', cost: 2, attack: 2, hp: 4, rarity: '一般', desc: '効果なし' },
+                    { id: 2, class: '怪物', name: '吸血鬼の従者', type: 'FOLLOWER', cost: 3, attack: 3, hp: 3, rarity: 'レア', desc: '効果なし' }
+                ];
+            }
+        }
+
+        function parseCardCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const cards = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(v => v.trim());
+                if (values.length < headers.length) continue;
+                let card = {};
+                headers.forEach((h, idx) => {
+                    let val = values[idx];
+                    if (['No', '攻撃力', '体力', 'コスト'].includes(h) && !isNaN(val) && val !== '') val = Number(val);
+                    card[h] = val;
+                });
+                cards.push({
+                    id: card['No'] || i, class: card['クラス'] || '無所属', name: card['カード名'] || '不明',
+                    type: card['種別'] === '魔法' ? 'SPELL' : 'FOLLOWER', rarity: card['レアリティ'] || '一般',
+                    cost: isNaN(card['コスト']) ? 1 : card['コスト'], attack: isNaN(card['攻撃力']) ? 0 : card['攻撃力'],
+                    hp: isNaN(card['体力']) ? 0 : card['体力'], desc: card['効果テキスト'] || '特になし'
+                });
+            }
+            return cards;
+        }
+
+        function updateUserAssetsDisplay() {
+            let user = JSON.parse(localStorage.getItem('user') || '{}');
+            document.getElementById('shop-coin').innerText = user.coin || 0;
+            document.getElementById('shop-gem').innerText = user.gem || 1500;
+        }
+
+        // --- パック購入＆ガチャ抽選ロジック ---
+        function buyCardPack(cost, count) {
+            let user = JSON.parse(localStorage.getItem('user') || '{}');
+            user.coin = user.coin || 0;
+
+            if (user.coin < cost) {
+                alert('コインが足りません！バトルやミッションでコインを集めましょう。');
+                return;
+            }
+
+            // コイン消費
+            user.coin -= cost;
+            user.ownedCards = user.ownedCards || {};
+
+            // 抽選（5枚）
+            let pulledCards = [];
+            if (CARD_DATABASE.length > 0) {
+                for (let i = 0; i < count; i++) {
+                    const randomCard = CARD_DATABASE[Math.floor(Math.random() * CARD_DATABASE.length)];
+                    pulledCards.push(randomCard);
+                    // 所持枚数に加算
+                    user.ownedCards[randomCard.id] = (user.ownedCards[randomCard.id] || 0) + 1;
+                }
+            }
+
+            localStorage.setItem('user', JSON.stringify(user));
+            updateUserAssetsDisplay();
+
+            // ガチャ演出の開始
+            showGachaAnimation(pulledCards);
+        }
+
+        function showGachaAnimation(cards) {
+            const box = document.getElementById('gacha-cards-box');
+            box.innerHTML = '';
+            document.getElementById('btn-gacha-finish').style.display = 'none';
+
+            cards.forEach((card, idx) => {
+                const el = document.createElement('div');
+                el.className = `gacha-card ${card.rarity === 'レア' ? 'rare' : (card.rarity === 'SSR' ? 'ssr' : '')}`;
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(30px) scale(0.8)';
+                el.innerHTML = `
+                    <div style="position:absolute; top:-6px; left:-6px; width:26px; height:26px; border-radius:50%; background:#172d54; border:1px solid #fff; color:#fff; font-size:12px; font-weight:bold; display:flex; justify-content:center; align-items:center;">${card.cost}</div>
+                    <div style="font-size:10px; color:#c9a050; text-align:right;">${card.rarity || '一般'}</div>
+                    <div style="font-size:13px; font-weight:bold; color:#f1e6cf; text-align:center; margin-top:10px;">${card.name}</div>
+                    <div style="font-size:10px; color:#b8c4d2; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${card.desc}</div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; border-top:1px solid rgba(255,255,255,0.1); padding-top:4px;">
+                        <span style="color:#00f0ff;">${card.type === 'FOLLOWER' ? '⚔' + card.attack : ''}</span>
+                        <span style="color:#ff4d4d;">${card.type === 'FOLLOWER' ? '❤' + card.hp : ''}</span>
+                    </div>
+                `;
+                box.appendChild(el);
+
+                // 順番にカードが飛び出すアニメーション
+                setTimeout(() => {
+                    el.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0) scale(1)';
+                }, 200 + idx * 180);
+            });
+
+            document.getElementById('gacha-modal').style.display = 'flex';
+
+            // 全カード表示後に閉じるボタン出現
+            setTimeout(() => {
+                document.getElementById('btn-gacha-finish').style.display = 'block';
+            }, 200 + cards.length * 180 + 300);
+        }
+
+        function closeGachaModal() {
+            document.getElementById('gacha-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

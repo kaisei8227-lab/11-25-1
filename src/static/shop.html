@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <script src="js/sync.js"></script>
+    <script src="/js/auth-check.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gothic Duel - ショップ</title>
+    <link rel="stylesheet" href="css/card.css">
+    <style>
+        body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        main { flex: 1; display: flex; align-items: center; justify-content: center; gap: 40px; padding: 20px; }
+        .pack {
+            width: 270px; height: 420px; border-radius: 16px; padding: 22px; cursor: default;
+            display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center;
+            border: 2.5px solid var(--pc, #c9a050); background: linear-gradient(160deg, var(--p1, #2b183b), #0b0612);
+            box-shadow: 0 0 30px color-mix(in srgb, var(--pc, #c9a050) 40%, transparent); transition: 0.25s;
+        }
+        .pack:hover { transform: translateY(-8px); box-shadow: 0 0 50px color-mix(in srgb, var(--pc, #c9a050) 70%, transparent); }
+        .pack-art { width: 170px; height: 200px; border-radius: 10px; display: grid; place-items: center; font-size: 80px;
+            background: repeating-linear-gradient(45deg, rgba(255,255,255,0.04) 0 6px, transparent 6px 12px), radial-gradient(circle, color-mix(in srgb, var(--pc) 50%, #000), #000);
+            border: 1px solid var(--pc); box-shadow: inset 0 0 30px #000; }
+        .pack-name { font-family: "Shippori Mincho", serif; font-size: 19px; font-weight: 800; color: var(--pc); }
+        .pack-desc { font-size: 12px; color: #d8ccb0; line-height: 1.5; }
+        .pack-rate { font-size: 11px; color: #a792ba; }
+        .buy { display: flex; gap: 8px; width: 100%; }
+        .buy button { flex: 1; padding: 9px 4px; }
+
+        /* 開封演出 */
+        .opening { position: fixed; inset: 0; z-index: 300; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 30px;
+            background: radial-gradient(ellipse at center, rgba(40, 20, 60, 0.9), rgba(0, 0, 0, 0.97)); }
+        .opening.open { display: flex; }
+        .op-title { font-family: var(--title); font-size: 28px; color: #ffd700; text-shadow: 0 0 15px rgba(255,215,0,0.8); }
+        .op-pack { width: 200px; height: 300px; border-radius: 14px; border: 3px solid #ffd700; display: grid; place-items: center; font-size: 90px;
+            background: radial-gradient(circle, #5a3a10, #120a02); cursor: pointer; animation: pack-shake 0.9s ease-in-out infinite; box-shadow: 0 0 40px rgba(255,215,0,0.6); }
+        .op-pack.burst { animation: pack-burst 0.5s ease-out forwards; }
+        @keyframes pack-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-3deg) scale(1.02); } 75% { transform: rotate(3deg) scale(1.02); } }
+        @keyframes pack-burst { to { transform: scale(1.6); opacity: 0; filter: brightness(4); } }
+        .op-cards { display: flex; gap: 20px; --cw: 160px; perspective: 1000px; }
+        .flip { width: var(--cw); aspect-ratio: 3 / 4; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer;
+            animation: deal 0.5s ease-out backwards; }
+        .flip.open { transform: rotateY(180deg); cursor: default; }
+        .flip .back, .flip .front { position: absolute; inset: 0; backface-visibility: hidden; }
+        .flip .front { transform: rotateY(180deg); }
+        .flip .back { border-radius: 14px; border: 3px solid #c9a050; display: grid; place-items: center; font-size: 40px; color: rgba(201,160,80,0.7);
+            background: radial-gradient(circle, rgba(201,165,76,0.4) 0 10%, transparent 11%), repeating-linear-gradient(45deg, #1b1f3a 0 6px, #10132a 6px 12px); }
+        .flip.r-ace .back { border-color: #ffd700; box-shadow: 0 0 25px #ffd700; animation: deal 0.5s ease-out backwards, ace-hint 1s ease-in-out infinite alternate; }
+        .flip.open.r-ace .front .cv-card { box-shadow: 0 0 0 3px #ffd700, 0 0 40px rgba(255, 215, 0, 0.9); }
+        @keyframes deal { from { opacity: 0; transform: translateY(80px) scale(0.6); } }
+        @keyframes ace-hint { to { box-shadow: 0 0 45px #ff9ad9; } }
+        .new-tag { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); z-index: 5; padding: 2px 10px; border-radius: 10px; background: #e53e3e; color: #fff; font-size: 12px; font-weight: bold; }
+        .op-buttons { display: flex; gap: 12px; }
+        .op-buttons .gd-btn { padding: 10px 26px; font-size: 16px; }
+    </style>
+</head>
+<body class="gd-page">
+    <header class="gd-header">
+        <button class="gd-btn" onclick="location.href='home.html'">‹ ホームへ戻る</button>
+        <div class="gd-title">GOTHIC SHOP</div>
+        <div class="gd-spacer"></div>
+        <div class="gd-chip">🪙 <span id="coin">0</span></div>
+        <div class="gd-chip" style="border-color:#00f0ff;color:#00f0ff">💎 <span id="gem">0</span></div>
+    </header>
+    <main id="packs"></main>
+
+    <div class="opening" id="opening">
+        <div class="op-title" id="op-title">CARD PACK</div>
+        <div id="op-stage"></div>
+        <div class="op-buttons" id="op-buttons"></div>
+    </div>
+
+    <script src="js/effects.js"></script>
+    <script src="js/cards.js"></script>
+    <script src="js/card-view.js"></script>
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const CARDS_PER_PACK = 5;
+        const ACE_RATE = 0.08; // 1枚ごとのエース確率（5枚目は 準エース以上が確定）
+
+        const PACKS = [
+            { id: 1, name: "第1弾：夜想曲の奏者", icon: "🃏", color: "#c9a050", bg: "#2b183b", price: 100,
+              classes: [CLASS.NOBLE, CLASS.MONSTER, CLASS.GHOST, CLASS.NEUTRAL],
+              desc: "貴族・怪物・幽霊、そして無所属のカードを収録した基本パック。" },
+            { id: 2, name: "第2弾：禁断の魔導書", icon: "🔮", color: "#00d4ff", bg: "#0b2233", price: 200,
+              classes: [CLASS.WITCH, CLASS.PUPPET, CLASS.HUNTER, CLASS.PIRATE],
+              desc: "魔女・人形・狩人・海賊のカードを収録した拡張パック。" },
+        ];
+
+        function loadUser() { return JSON.parse(localStorage.getItem("user") || "{}"); }
+        function saveUser(u) { localStorage.setItem("user", JSON.stringify(u)); }
+
+        function updateAssets() {
+            const u = loadUser();
+            $("coin").textContent = u.coin || 0;
+            $("gem").textContent = u.gem ?? 1500;
+        }
+
+        function renderPacks() {
+            $("packs").innerHTML = PACKS.map((p) => `<div class="pack" style="--pc:${p.color};--p1:${p.bg}">
+                <div class="pack-art">${p.icon}</div>
+                <div><div class="pack-name">${p.name}</div><div class="pack-desc" style="margin-top:6px">${p.desc}</div></div>
+                <div class="pack-rate">1パック ${CARDS_PER_PACK}枚 ／ エース出現率 ${Math.round(ACE_RATE * 100)}%（5枚目はエース確定枠あり）</div>
+                <div class="buy">
+                    <button class="gd-btn primary" data-p="${p.id}" data-n="1">${p.price} コイン</button>
+                    <button class="gd-btn" data-p="${p.id}" data-n="10">10パック ${p.price * 10}</button>
+                </div></div>`).join("");
+            $("packs").onclick = (e) => {
+                const b = e.target.closest("[data-p]");
+                if (b) buy(PACKS.find((p) => p.id === Number(b.dataset.p)), Number(b.dataset.n));
+            };
+        }
+
+        function drawCard(pool, guaranteeAce) {
+            const aces = pool.filter((c) => c.isAce);
+            const normals = pool.filter((c) => !c.isAce);
+            const isAce = guaranteeAce ? Math.random() < 0.35 : Math.random() < ACE_RATE;
+            const from = isAce && aces.length ? aces : normals;
+            return from[Math.floor(Math.random() * from.length)];
+        }
+
+        function buy(pack, packs) {
+            const user = loadUser();
+            const cost = pack.price * packs;
+            if ((user.coin || 0) < cost) return alert("コインが足りません！バトルやミッションでコインを集めましょう。");
+            const pool = CARD_DATABASE.filter((c) => !c.isToken && pack.classes.includes(c.class));
+            const pulled = [];
+            for (let p = 0; p < packs; p++) {
+                for (let i = 0; i < CARDS_PER_PACK; i++) pulled.push(drawCard(pool, i === CARDS_PER_PACK - 1));
+            }
+            user.coin -= cost;
+            user.ownedCards = user.ownedCards || {};
+            const before = { ...user.ownedCards };
+            pulled.forEach((c) => { user.ownedCards[c.id] = (user.ownedCards[c.id] || 0) + 1; });
+            saveUser(user);
+            updateAssets();
+            openPack(pack, pulled, before);
+        }
+
+        // 開封演出: パックをクリック → 裏向きで並ぶ → 1枚ずつめくる
+        function openPack(pack, pulled, before) {
+            $("opening").classList.add("open");
+            $("op-title").textContent = pack.name;
+            $("op-buttons").innerHTML = "";
+            $("op-stage").innerHTML = `<div class="op-pack" id="op-pack">${pack.icon}</div>`;
+            const showGroup = (start) => {
+                const group = pulled.slice(start, start + CARDS_PER_PACK);
+                const seen = new Set();
+                $("op-stage").innerHTML = `<div class="op-cards">${group.map((c, i) => {
+                    const isNew = !before[c.id] && !seen.has(c.id);
+                    seen.add(c.id);
+                    return `<div class="flip ${c.isAce ? "r-ace" : ""}" style="animation-delay:${i * 0.12}s">
+                        <div class="back">✦</div><div class="front">${isNew ? `<span class="new-tag">NEW</span>` : ""}${CardView.html(c)}</div></div>`;
+                }).join("")}</div>`;
+                const flips = [...document.querySelectorAll(".flip")];
+                const next = start + CARDS_PER_PACK < pulled.length;
+                $("op-buttons").innerHTML = `<button class="gd-btn" id="op-all">すべてめくる</button>
+                    <button class="gd-btn primary" id="op-next" style="display:none">${next ? `次のパック（${start / CARDS_PER_PACK + 2}/${pulled.length / CARDS_PER_PACK}）` : "閉じる"}</button>`;
+                const check = () => {
+                    if (flips.every((f) => f.classList.contains("open"))) {
+                        $("op-all").style.display = "none";
+                        $("op-next").style.display = "";
+                    }
+                };
+                flips.forEach((f) => f.onclick = () => { f.classList.add("open"); check(); });
+                $("op-all").onclick = () => { flips.forEach((f, i) => setTimeout(() => { f.classList.add("open"); check(); }, i * 120)); };
+                $("op-next").onclick = () => {
+                    if (next) showGroup(start + CARDS_PER_PACK);
+                    else $("opening").classList.remove("open");
+                };
+            };
+            $("op-pack").onclick = () => {
+                $("op-pack").classList.add("burst");
+                setTimeout(() => showGroup(0), 450);
+            };
+        }
+
+        renderPacks();
+        updateAssets();
+    </script>
+</body>
+</html>

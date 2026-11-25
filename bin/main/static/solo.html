@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gothic Duel - ソロバトル</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { font-family: 'EB Garamond', serif; background: #090e07; color: #ffffff; height: 100vh; overflow: hidden; position: relative; }
+
+        .battle-board { width: 100vw; height: 100vh; background: radial-gradient(circle at 50% 50%, #2e4726 0%, #121c0e 65%, #080d06 100%); display: flex; flex-direction: column; justify-content: space-between; padding: 12px 18px; position: relative; }
+        .top-left-ui { position: absolute; top: 12px; left: 15px; z-index: 10; display: flex; gap: 12px; align-items: center; }
+        .turn-counter-badge { background: rgba(12, 18, 10, 0.9); border: 1.5px solid #c9a050; border-radius: 20px; padding: 4px 14px; font-family: 'Cinzel Decorative', serif; color: #ffd700; font-size: 13px; font-weight: bold; }
+        .deck-count-badge { background: rgba(12, 18, 10, 0.9); border: 1px solid #4a6b40; border-radius: 15px; padding: 4px 12px; color: #a2c497; font-size: 12px; font-weight: bold; }
+
+        .leader-container { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; z-index: 5; }
+        .enemy-leader { top: 8px; }
+        .my-leader { bottom: 30px; }
+        .leader-avatar-frame { width: 86px; height: 86px; border-radius: 50%; border: 3px solid #d4af37; background: #131c10; display: flex; justify-content: center; align-items: center; font-size: 44px; position: relative; cursor: pointer; transition: 0.2s; }
+        .leader-avatar-frame.targetable { border-color: #ff3333; box-shadow: 0 0 20px rgba(255, 51, 51, 0.9); animation: pulseTarget 1s infinite; }
+        
+        .badge-stat { position: absolute; border-radius: 50%; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 2px solid #fff; }
+        .badge-hp { right: -10px; bottom: 8px; width: 36px; height: 36px; background: #800000; color: #fff; font-size: 17px; }
+
+        .field-area { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 22px; margin: 50px 0; }
+        .card-row { display: flex; justify-content: center; gap: 14px; min-height: 125px; }
+        
+        .field-card { width: 92px; height: 125px; background: linear-gradient(145deg, #1c2b18, #0a1208); border: 2px solid #4a6b40; border-radius: 6px; position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 6px; cursor: pointer; transition: 0.2s; }
+        .field-card.evolved { border-color: #c084fc; background: linear-gradient(145deg, #3b0764, #1e1b4b); box-shadow: 0 0 15px rgba(192, 132, 252, 0.6); }
+        
+        /* 攻撃可能（疾走含む）＆ 選択中スタイル */
+        .field-card.can-attack { border-color: #48bb78; box-shadow: 0 0 14px rgba(72, 187, 120, 0.85); }
+        .field-card.selected-attacker { border-color: #ffd700; transform: translateY(-8px) scale(1.05); box-shadow: 0 0 22px rgba(255, 215, 0, 1); }
+        .field-card.targetable { border-color: #ff3333; box-shadow: 0 0 18px rgba(255, 51, 51, 0.9); }
+
+        @keyframes pulseTarget {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+
+        .keyword-badge {
+            position: absolute; top: -7px; left: -6px; background: #16a34a; color: #fff;
+            border: 1px solid #fff; border-radius: 4px; padding: 1px 4px;
+            font-size: 9px; font-weight: bold; z-index: 4;
+        }
+
+        .btn-evolve-action {
+            position: absolute; top: -8px; right: -8px; background: #c084fc; color: #000;
+            border: 1px solid #fff; border-radius: 50%; width: 22px; height: 22px;
+            font-size: 10px; font-weight: bold; display: flex; justify-content: center; align-items: center;
+            cursor: pointer; z-index: 5; box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        }
+        .btn-evolve-action:hover { transform: scale(1.15); background: #e879f9; }
+
+        .bottom-ui { position: absolute; bottom: 8px; right: 20px; display: flex; justify-content: flex-end; align-items: flex-end; z-index: 10; pointer-events: none; }
+        .hand-container { display: flex; justify-content: flex-end; pointer-events: auto; padding-right: 110px; }
+        .hand-card { width: 88px; height: 122px; background: linear-gradient(145deg, #182614, #0d170b); border: 2px solid #8ba880; border-radius: 8px; padding: 6px; cursor: pointer; position: relative; margin-left: -14px; transition: 0.2s; display: flex; flex-direction: column; justify-content: space-between; }
+        .hand-card:hover { transform: translateY(-16px); z-index: 20; border-color: #ffd700; }
+        .hand-card.playable { border-color: #00f0ff; box-shadow: 0 0 12px rgba(0, 240, 255, 0.5); }
+        .card-cost { position: absolute; top: -6px; left: -6px; background: #172d54; color: #fff; border-radius: 50%; width: 24px; height: 24px; font-weight: bold; display: flex; justify-content: center; align-items: center; border: 1px solid #fff; font-size: 12px; }
+
+        .right-ui-panel { position: absolute; right: 20px; top: 42%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 10; }
+        .pp-badge-box { background: rgba(12, 18, 10, 0.85); border: 1px solid #3c5433; border-radius: 15px; padding: 4px 14px; color: #00f0ff; font-weight: bold; }
+        .ep-container { display: flex; gap: 4px; align-items: center; background: rgba(12, 18, 10, 0.85); border: 1px solid #c9a050; border-radius: 12px; padding: 4px 8px; }
+        .ep-orb { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle, #00f0ff, #172d54); border: 1px solid #fff; box-shadow: 0 0 6px #00f0ff; }
+        .ep-orb.used { background: #2a3b4c; border-color: #4a5568; box-shadow: none; }
+
+        .btn-turn-end { width: 90px; height: 90px; border-radius: 50%; background: radial-gradient(circle, #1a5bb8 0%, #081d42 100%); border: 2px solid #5c96f5; color: #fff; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+        .btn-turn-end:hover { filter: brightness(1.15); }
+
+        .action-guide-banner {
+            position: absolute; top: 105px; left: 50%; transform: translateX(-50%);
+            background: rgba(12, 8, 20, 0.85); border: 1px solid #ffd700; border-radius: 20px;
+            padding: 4px 18px; font-size: 12px; color: #ffd700; z-index: 15; display: none;
+        }
+
+        /* リザルトモーダル */
+        .result-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(5, 8, 15, 0.9); backdrop-filter: blur(8px);
+            display: none; justify-content: center; align-items: center; z-index: 4000;
+        }
+        .result-modal-box {
+            background: linear-gradient(145deg, #181124, #0d0914);
+            border: 2.5px solid #c9a050; border-radius: 14px;
+            width: 380px; max-width: 90vw; padding: 28px 24px;
+            text-align: center; box-shadow: 0 0 40px rgba(201, 160, 80, 0.5);
+            display: flex; flex-direction: column; gap: 16px;
+        }
+        .result-title { font-family: 'Cinzel Decorative', serif; font-size: 28px; font-weight: bold; color: #ffd700; text-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
+        .reward-grid { background: rgba(12, 8, 18, 0.8); border: 1px solid #4a3e56; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+        .reward-row { display: flex; justify-content: space-between; font-size: 13px; color: #f1e6cf; }
+        .reward-val { font-weight: bold; color: #00f0ff; font-family: 'Cinzel Decorative', serif; }
+        .reward-val.mp { color: #ffd700; }
+        .btn-result-ok {
+            background: linear-gradient(135deg, #c9a050, #8a5a00); border: 1.5px solid #ffd700;
+            color: #000; font-family: 'Cinzel Decorative', serif; font-weight: bold;
+            padding: 12px; border-radius: 8px; cursor: pointer; font-size: 15px;
+        }
+
+        #turn-cutin-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); pointer-events: none; z-index: 2500; display: none; justify-content: center; align-items: center; }
+        .turn-cutin-text { font-family: 'Cinzel Decorative', serif; font-size: 52px; font-weight: bold; color: #ffd700; text-shadow: 0 0 20px #ffd700; animation: turnCutinAnim 1.2s forwards; }
+        @keyframes turnCutinAnim { 0% { opacity: 0; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.2); } }
+
+        .battle-log-toggle-btn { position: absolute; left: 15px; bottom: 20px; z-index: 10; background: rgba(12,18,10,0.85); border: 1px solid #c9a050; border-radius: 4px; color: #c9a050; padding: 6px 12px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .battle-log-panel { position: absolute; left: 15px; bottom: 55px; width: 290px; height: 170px; background: rgba(8,12,18,0.94); border: 1px solid #3c5473; border-radius: 6px; padding: 8px; z-index: 20; display: none; flex-direction: column; gap: 4px; }
+        .battle-log-content { flex: 1; overflow-y: auto; font-size: 11px; color: #d1d5db; display: flex; flex-direction: column; gap: 3px; }
+        .damage-pop { position: absolute; font-size: 26px; font-weight: bold; color: #ff3333; text-shadow: 0 0 6px #000; pointer-events: none; z-index: 2000; animation: popAndFade 0.9s forwards; }
+        @keyframes popAndFade { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 100% { opacity: 0; transform: translate(-50%, -120%) scale(1); } }
+    </style>
+</head>
+<body>
+
+<div id="turn-cutin-overlay"><div class="turn-cutin-text">YOUR TURN</div></div>
+<div id="action-guide" class="action-guide-banner">攻撃対象（相手のカード または 相手リーダー）を選択してください</div>
+
+<button class="battle-log-toggle-btn" onclick="toggleBattleLog()">📜 ログ</button>
+<div id="battle-log-panel" class="battle-log-panel">
+    <div style="font-size:11px; color:#ffd700; font-weight:bold; border-bottom:1px solid #4a3e56;" id="stage-info-title">SOLO BATTLE</div>
+    <div id="battle-log-content" class="battle-log-content"></div>
+</div>
+
+<div class="battle-board">
+    <div class="top-left-ui">
+        <div class="turn-counter-badge">TURN <span id="turn-count-val">1</span></div>
+        <div class="deck-count-badge">山札: <span id="my-deck-count">0</span>枚</div>
+        <div class="deck-count-badge" id="active-deck-name-badge">使用デッキ: 読込中</div>
+    </div>
+
+    <div class="leader-container enemy-leader">
+        <div class="leader-avatar-frame" id="enemy-leader-frame" onclick="handleTargetLeader()" title="敵リーダーに攻撃">
+            <span id="enemy-emblem">🕯️</span>
+            <div class="badge-stat badge-hp" id="enemy-hp">20</div>
+        </div>
+    </div>
+
+    <div class="field-area">
+        <div class="card-row" id="enemy-board"></div>
+        <div class="card-row" id="my-board"></div>
+    </div>
+
+    <div class="leader-container my-leader">
+        <div class="leader-avatar-frame">🧙‍♂️<div class="badge-stat badge-hp" id="my-hp">20</div></div>
+    </div>
+
+    <div class="bottom-ui"><div class="hand-container" id="my-hand"></div></div>
+
+    <div class="right-ui-panel">
+        <div class="pp-badge-box">PP <span id="current-pp">1</span> / <span id="max-pp">1</span></div>
+        <div class="ep-container" title="進化ポイント (EP)">
+            <span style="font-size: 10px; color: #ffd700; font-weight: bold;">EP</span>
+            <div style="display: flex; gap: 4px;" id="ep-orbs-box">
+                <div class="ep-orb" id="ep-1"></div>
+                <div class="ep-orb" id="ep-2"></div>
+            </div>
+        </div>
+        <button class="btn-turn-end" onclick="endTurn()">ターン<br>終了</button>
+    </div>
+</div>
+
+<!-- バトル勝利モーダル -->
+<div id="battle-result-modal" class="result-modal-overlay">
+    <div class="result-modal-box">
+        <div id="modal-result-title" class="result-title">STAGE CLEAR!</div>
+        <div id="modal-result-sub" style="font-size: 14px; color: #a792ba;">強敵を打ち破りました</div>
+
+        <div class="reward-grid">
+            <div class="reward-row">
+                <span>獲得 コイン</span>
+                <span class="reward-val" style="color: #ffd700;">🪙 +200 コイン</span>
+            </div>
+            <div class="reward-row">
+                <span>獲得 MP</span>
+                <span class="reward-val mp">+100 MP</span>
+            </div>
+        </div>
+
+        <button class="btn-result-ok" onclick="returnToHome()">ホームへ戻る</button>
+    </div>
+</div>
+
+<script src="js/rank_util.js"></script>
+
+<script>
+    const STAGE_CONFIGS = {
+        1: { name: 'ステージ 1', opponent: '見習い従者', emblem: '🕯️', aiHp: 15, difficulty: 'easy' },
+        2: { name: 'ステージ 2', opponent: '墓場の獣', emblem: '🐺', aiHp: 20, difficulty: 'normal' },
+        3: { name: 'ステージ 3', opponent: '嘆きの亡霊', emblem: '👻', aiHp: 25, difficulty: 'normal' },
+        4: { name: 'ステージ 4', opponent: '見習い魔女', emblem: '🔮', aiHp: 30, difficulty: 'hard' },
+        5: { name: 'ステージ 5', opponent: '深紅の女王 カリスタ', emblem: '👑', aiHp: 40, difficulty: 'hard' }
+    };
+
+    let currentStageId = 1;
+    let stageConfig = STAGE_CONFIGS[1];
+
+    const SoundManager = {
+        audioCtx: null,
+        init() { if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); },
+        playCard() { this.init(); const o = this.audioCtx.createOscillator(), g = this.audioCtx.createGain(); o.frequency.setValueAtTime(400, this.audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(800, this.audioCtx.currentTime + 0.1); g.gain.setValueAtTime(0.3, this.audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.1); o.connect(g); g.connect(this.audioCtx.destination); o.start(); o.stop(this.audioCtx.currentTime + 0.1); },
+        playAttack() { this.init(); const o = this.audioCtx.createOscillator(), g = this.audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(150, this.audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(40, this.audioCtx.currentTime + 0.2); g.gain.setValueAtTime(0.5, this.audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.2); o.connect(g); g.connect(this.audioCtx.destination); o.start(); o.stop(this.audioCtx.currentTime + 0.2); },
+        playVictoryFanfare() {
+            this.init();
+            const now = this.audioCtx.currentTime;
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, idx) => {
+                const o = this.audioCtx.createOscillator();
+                const g = this.audioCtx.createGain();
+                o.type = 'triangle';
+                o.frequency.setValueAtTime(freq, now + idx * 0.15);
+                g.gain.setValueAtTime(0.3, now + idx * 0.15);
+                g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.15 + 0.8);
+                o.connect(g);
+                g.connect(this.audioCtx.destination);
+                o.start(now + idx * 0.15);
+                o.stop(now + idx * 0.15 + 0.8);
+            });
+        }
+    };
+
+    let turnCount = 1, myHp = 20, enemyHp = 20, currentPp = 1, maxPp = 1, myEp = 2, enemyEp = 2;
+    let myDeckList = [], myHandCards = [], myBoardCards = [];
+    let enemyBoardCards = []; // 開始時は完全に空にする
+    let aiPp = 1, aiMaxPp = 1, aiHandCards = [], aiDeckList = [];
+    let selectedAttackerId = null; // 攻撃元として選択中の自分のカードID
+
+    document.addEventListener('DOMContentLoaded', () => {
+        currentStageId = parseInt(localStorage.getItem('currentSoloStage') || '1', 10);
+        stageConfig = STAGE_CONFIGS[currentStageId] || STAGE_CONFIGS[1];
+        
+        enemyHp = stageConfig.aiHp;
+        document.getElementById('enemy-emblem').innerText = stageConfig.emblem;
+        document.getElementById('stage-info-title').innerText = `${stageConfig.name} vs ${stageConfig.opponent}`;
+
+        loadUserDeck();
+        setupAiDeck();
+
+        // 開始時の初期手札を確実に4枚ドローする
+        for (let i = 0; i < 4; i++) {
+            drawMyCard(true);
+        }
+
+        renderAll();
+        addBattleLog(`${stageConfig.name} (${stageConfig.opponent}) との戦闘開始！`);
+    });
+
+    // 山札から1枚ドローする共通関数
+    function drawMyCard(isInitial = false) {
+        if (myDeckList.length === 0) {
+            if (!isInitial) addBattleLog('⚠️ 山札が尽きました！');
+            return;
+        }
+        if (myHandCards.length >= 9) {
+            const burned = myDeckList.pop();
+            if (!isInitial) addBattleLog(`🔥 手札上限のため『${burned.name}』が燃えました`);
+            return;
+        }
+        const drawn = myDeckList.pop();
+        myHandCards.push(drawn);
+        if (!isInitial) {
+            addBattleLog(`🃏 『${drawn.name}』をドローしました`);
+        }
+    }
+
+    // ユーザー作成デッキの読み込み＆補完処理
+    function loadUserDeck() {
+        const saved = localStorage.getItem('userDecksList');
+        const activeIdx = parseInt(localStorage.getItem('activeDeckIndex') || '0', 10);
+        let deckName = 'スターターデッキ';
+        let loadedCards = [];
+
+        if (saved) {
+            try {
+                const decks = JSON.parse(saved);
+                // 指定インデックスのデッキ、空ならカードが入っている最初のデッキを探す
+                let targetDeck = decks[activeIdx];
+                if (!targetDeck || !targetDeck.cards || targetDeck.cards.length === 0) {
+                    targetDeck = decks.find(d => d && d.cards && d.cards.length > 0);
+                }
+
+                if (targetDeck && targetDeck.cards && targetDeck.cards.length > 0) {
+                    deckName = targetDeck.name || `マイデッキ ${activeIdx + 1}`;
+                    targetDeck.cards.forEach(c => {
+                        const count = Number(c.count) || 1;
+                        for (let i = 0; i < count; i++) {
+                            loadedCards.push({
+                                name: c.name,
+                                cost: Number(c.cost) || 1,
+                                attack: Number(c.attack) || 0,
+                                hp: Number(c.hp) || 1,
+                                type: c.type || 'クリーチャー',
+                                effect: c.effect || '',
+                                isEvolved: false
+                            });
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Deck load error:', e);
+            }
+        }
+
+        // 万が一デッキが未作成・枚数不足の場合はスターターカードで補完（最低20枚保証）
+        const fallbackPool = [
+            { name: '見習いの令息', cost: 1, attack: 2, hp: 2, type: 'クリーチャー', effect: '特になし' },
+            { name: '血の従者', cost: 2, attack: 3, hp: 2, type: 'クリーチャー', effect: '特になし' },
+            { name: '古き血統の騎士', cost: 3, attack: 4, hp: 4, type: 'クリーチャー', effect: '特になし' },
+            { name: '突撃する猪頭鬼', cost: 5, attack: 6, hp: 2, type: 'クリーチャー', effect: '疾走' },
+            { name: '雷神王', cost: 6, attack: 7, hp: 4, type: 'クリーチャー', effect: '疾走。自分の場に他カードがいる場合そのカードの攻撃力+2。' }
+        ];
+
+        while (loadedCards.length < 20) {
+            const sample = fallbackPool[loadedCards.length % fallbackPool.length];
+            loadedCards.push({ ...sample, isEvolved: false });
+        }
+
+        document.getElementById('active-deck-name-badge').innerText = `デッキ: ${deckName}`;
+        myDeckList = loadedCards.sort(() => Math.random() - 0.5);
+    }
+
+    function setupAiDeck() {
+        aiDeckList = [];
+        for (let i = 0; i < 25; i++) {
+            aiDeckList.push(
+                { name: `${stageConfig.opponent}の先兵`, cost: 1, attack: 1 + Math.floor(currentStageId / 2), hp: 2 },
+                { name: `${stageConfig.opponent}の精鋭`, cost: 3, attack: 3 + Math.floor(currentStageId / 2), hp: 3 + currentStageId },
+                { name: `${stageConfig.opponent}の重騎士`, cost: 5, attack: 4 + currentStageId, hp: 5 + currentStageId }
+            );
+        }
+        aiDeckList.sort(() => Math.random() - 0.5);
+        aiHandCards = [aiDeckList.pop(), aiDeckList.pop(), aiDeckList.pop()];
+    }
+
+    function addBattleLog(text) {
+        const c = document.getElementById('battle-log-content');
+        if (!c) return;
+        c.innerHTML += `<div>[T${turnCount}] ${text}</div>`;
+        c.scrollTop = c.scrollHeight;
+    }
+
+    function toggleBattleLog() {
+        const p = document.getElementById('battle-log-panel');
+        p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    function showDamagePop(el, val) {
+        if (!el || val <= 0) return;
+        const r = el.getBoundingClientRect();
+        const p = document.createElement('div');
+        p.className = 'damage-pop'; p.innerText = `-${val}`;
+        p.style.left = `${r.left + r.width / 2}px`; p.style.top = `${r.top + r.height / 2}px`;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 900);
+    }
+
+    // 疾走・キーワード判定ヘルパー
+    function hasStorm(card) {
+        return card.effect && card.effect.includes('疾走');
+    }
+
+    // 手札からカードをプレイ
+    function playCard(index) {
+        const card = myHandCards[index];
+        if (!card) return;
+        if (currentPp < card.cost) {
+            alert(`PPが足りません！（必要PP: ${card.cost} / 現在PP: ${currentPp}）`);
+            return;
+        }
+
+        // 魔法（スペル）カードの処理
+        if (card.type === '魔法') {
+            currentPp -= card.cost;
+            myHandCards.splice(index, 1);
+            SoundManager.playCard();
+            const dmg = Math.max(2, card.cost);
+            enemyHp = Math.max(0, enemyHp - dmg);
+            showDamagePop(document.querySelector('.enemy-leader'), dmg);
+            addBattleLog(`✨ 魔法『${card.name}』発動！敵リーダーに ${dmg} ダメージ`);
+            selectedAttackerId = null;
+            renderAll();
+            checkVictory();
+            return;
+        }
+
+        // クリーチャーカードの召喚
+        if (myBoardCards.length >= 5) {
+            alert('盤面がいっぱいです（最大5体まで）！');
+            return;
+        }
+
+        currentPp -= card.cost;
+        myHandCards.splice(index, 1);
+        SoundManager.playCard();
+
+        const stormActive = hasStorm(card);
+        const newUnit = {
+            ...card,
+            instanceId: 'inst_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            isEvolved: false,
+            canAttack: stormActive // ★ 「疾走」を持つ場合は召喚直後から攻撃可能！
+        };
+
+        myBoardCards.push(newUnit);
+        selectedAttackerId = null;
+
+        if (stormActive) {
+            addBattleLog(`⚡ 【疾走】『${card.name}』を召喚！即座に攻撃可能です！`);
+        } else {
+            addBattleLog(`『${card.name}』を召喚しました`);
+        }
+
+        renderAll();
+    }
+
+    // 進化処理（進化すると即座に攻撃可能になる）
+    function evolveCard(instanceId) {
+        if (myEp <= 0) return alert('進化ポイント（EP）が残っていません！');
+        if (turnCount < 3) return alert('進化は3ターン目以降から可能です！');
+
+        const target = myBoardCards.find(c => c.instanceId === instanceId);
+        if (!target || target.isEvolved) return;
+
+        myEp--;
+        target.isEvolved = true;
+        target.attack += 2;
+        target.hp += 2;
+        target.canAttack = true; // 進化時も行動可能化
+        SoundManager.playCard();
+        addBattleLog(`🌟 『${target.name}』が進化！(⚔+2 / ❤+2)`);
+        renderAll();
+    }
+
+    // 自分の場のカードをクリックして攻撃元に選択
+    function selectMyCard(instanceId) {
+        const card = myBoardCards.find(c => c.instanceId === instanceId);
+        if (!card) return;
+
+        if (!card.canAttack) {
+            alert('このカードはこのターンすでに攻撃済みか、召喚酔い中です（「疾走」持ちは出したターンから攻撃できます）。');
+            return;
+        }
+
+        if (selectedAttackerId === instanceId) {
+            selectedAttackerId = null; // 選択解除
+        } else {
+            selectedAttackerId = instanceId;
+        }
+        renderAll();
+    }
+
+    // 敵の場のカードへの攻撃
+    function handleTargetEnemyCard(enemyIdx) {
+        if (!selectedAttackerId) {
+            alert('先に自分の場の攻撃可能なカード（緑枠）をクリックして選択してください。');
+            return;
+        }
+
+        const attacker = myBoardCards.find(c => c.instanceId === selectedAttackerId);
+        const defender = enemyBoardCards[enemyIdx];
+        if (!attacker || !defender) return;
+
+        SoundManager.playAttack();
+        const attackerEl = document.querySelector(`[data-instance-id="${attacker.instanceId}"]`);
+        const defenderEl = document.querySelectorAll('#enemy-board .field-card')[enemyIdx];
+
+        // 戦闘ダメージ計算（相互ダメージ）
+        defender.hp -= attacker.attack;
+        attacker.hp -= defender.attack;
+        attacker.canAttack = false;
+        selectedAttackerId = null;
+
+        showDamagePop(defenderEl, attacker.attack);
+        showDamagePop(attackerEl, defender.attack);
+        addBattleLog(`⚔️ 『${attacker.name}』が敵の『${defender.name}』に攻撃！`);
+
+        // 破壊判定
+        if (defender.hp <= 0) {
+            addBattleLog(`💥 敵の『${defender.name}』を撃破！`);
+            enemyBoardCards.splice(enemyIdx, 1);
+        }
+        if (attacker.hp <= 0) {
+            addBattleLog(`💀 自分の『${attacker.name}』が破壊されました`);
+            myBoardCards = myBoardCards.filter(c => c.instanceId !== attacker.instanceId);
+        }
+
+        renderAll();
+    }
+
+    // 敵リーダーへの直接攻撃
+    function handleTargetLeader() {
+        if (!selectedAttackerId) {
+            alert('先に自分の場の攻撃可能なカード（緑枠）をクリックして選択してください。');
+            return;
+        }
+
+        const attacker = myBoardCards.find(c => c.instanceId === selectedAttackerId);
+        if (!attacker) return;
+
+        SoundManager.playAttack();
+        enemyHp = Math.max(0, enemyHp - attacker.attack);
+        attacker.canAttack = false;
+        selectedAttackerId = null;
+
+        showDamagePop(document.querySelector('.enemy-leader'), attacker.attack);
+        addBattleLog(`🔥 『${attacker.name}』が${stageConfig.opponent}に直接攻撃！ (${attacker.attack}ダメージ)`);
+
+        renderAll();
+        checkVictory();
+    }
+
+    function checkVictory() {
+        if (enemyHp <= 0) {
+            SoundManager.playVictoryFanfare();
+            handleStageVictory();
+        }
+    }
+
+    function updateEpDisplay() {
+        const ep1 = document.getElementById('ep-1');
+        const ep2 = document.getElementById('ep-2');
+        if (ep1 && ep2) {
+            ep1.className = `ep-orb ${myEp < 1 ? 'used' : ''}`;
+            ep2.className = `ep-orb ${myEp < 2 ? 'used' : ''}`;
+        }
+    }
+
+    function renderAll() {
+        document.getElementById('turn-count-val').innerText = turnCount;
+        document.getElementById('my-deck-count').innerText = myDeckList.length;
+        document.getElementById('my-hp').innerText = myHp;
+        document.getElementById('enemy-hp').innerText = enemyHp;
+        document.getElementById('current-pp').innerText = currentPp;
+        document.getElementById('max-pp').innerText = maxPp;
+        updateEpDisplay();
+
+        // ターゲットガイド表示の切り替え
+        const guideEl = document.getElementById('action-guide');
+        const enemyLeaderFrame = document.getElementById('enemy-leader-frame');
+        if (selectedAttackerId) {
+            guideEl.style.display = 'block';
+            enemyLeaderFrame.classList.add('targetable');
+        } else {
+            guideEl.style.display = 'none';
+            enemyLeaderFrame.classList.remove('targetable');
+        }
+
+        // 手札の描画
+        const handEl = document.getElementById('my-hand');
+        handEl.innerHTML = '';
+        myHandCards.forEach((c, idx) => {
+            const el = document.createElement('div');
+            const isPlayable = currentPp >= c.cost;
+            el.className = `hand-card ${isPlayable ? 'playable' : ''}`;
+            el.onclick = () => playCard(idx);
+            const stormTag = hasStorm(c) ? '<div style="font-size:9px; color:#4ade80; font-weight:bold; text-align:center;">⚡疾走</div>' : '';
+            el.innerHTML = `
+                <div class="card-cost">${c.cost}</div>
+                <div style="font-size:11px; font-weight:bold; color:#f1e6cf; text-align:center; margin-top:12px;">${c.name}</div>
+                ${stormTag}
+                <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:bold; border-top:1px solid rgba(255,255,255,0.15); padding-top:3px;">
+                    <span style="color:#00f0ff;">⚔${c.attack}</span><span style="color:#ff4d4d;">❤${c.hp}</span>
+                </div>`;
+            handEl.appendChild(el);
+        });
+
+        // 自分の盤面の描画
+        const myBoardEl = document.getElementById('my-board');
+        myBoardEl.innerHTML = '';
+        myBoardCards.forEach(c => {
+            const el = document.createElement('div');
+            el.setAttribute('data-instance-id', c.instanceId);
+            const isSelected = selectedAttackerId === c.instanceId;
+            el.className = `field-card ${c.isEvolved ? 'evolved' : ''} ${c.canAttack ? 'can-attack' : ''} ${isSelected ? 'selected-attacker' : ''}`;
+            el.onclick = () => selectMyCard(c.instanceId);
+
+            let stormBadge = hasStorm(c) ? `<div class="keyword-badge">疾走</div>` : '';
+            let evolveBtnHtml = (!c.isEvolved && myEp > 0 && turnCount >= 3)
+                ? `<button class="btn-evolve-action" onclick="event.stopPropagation(); evolveCard('${c.instanceId}')">進</button>`
+                : '';
+
+            el.innerHTML = `
+                ${stormBadge}
+                ${evolveBtnHtml}
+                <div style="font-size:11px; font-weight:bold; color:#f1e6cf; text-align:center; margin-top:8px;">${c.name}</div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:bold; margin-top:auto; padding-top:4px; border-top:1px solid rgba(255,255,255,0.1);">
+                    <span style="color:#00f0ff;">⚔${c.attack}</span><span style="color:#ff4d4d;">❤${c.hp}</span>
+                </div>`;
+            myBoardEl.appendChild(el);
+        });
+
+        // 相手の盤面の描画
+        const enemyBoardEl = document.getElementById('enemy-board');
+        enemyBoardEl.innerHTML = '';
+        enemyBoardCards.forEach((c, idx) => {
+            const el = document.createElement('div');
+            el.className = `field-card ${c.isEvolved ? 'evolved' : ''} ${selectedAttackerId ? 'targetable' : ''}`;
+            el.onclick = () => handleTargetEnemyCard(idx);
+            el.innerHTML = `
+                <div style="font-size:10px; font-weight:bold; color:#f1e6cf; text-align:center; margin-top:4px;">${c.name}</div>
+                <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:bold; margin-top:auto; padding-top:4px; border-top:1px solid rgba(255,255,255,0.1);">
+                    <span style="color:#00f0ff;">⚔${c.attack}</span><span style="color:#ff4d4d;">❤${c.hp}</span>
+                </div>`;
+            enemyBoardEl.appendChild(el);
+        });
+    }
+
+    function handleStageVictory() {
+        let user = JSON.parse(localStorage.getItem('user') || '{}');
+        user.coin = (user.coin || 0) + 200;
+        user.mp = (user.mp || 0) + 100;
+
+        user.clearedStage = typeof user.clearedStage === 'number' ? user.clearedStage : 0;
+        if (currentStageId > user.clearedStage) {
+            user.clearedStage = currentStageId;
+        }
+
+        localStorage.setItem('user', JSON.stringify(user));
+        document.getElementById('battle-result-modal').style.display = 'flex';
+    }
+
+    function returnToHome() {
+        window.location.href = 'home.html';
+    }
+
+    function endTurn() {
+        selectedAttackerId = null;
+        addBattleLog('ターン終了');
+        executeAITurn();
+    }
+
+    function executeAITurn() {
+        if (aiMaxPp < 10) aiMaxPp++;
+        aiPp = aiMaxPp;
+        if (aiDeckList.length > 0 && aiHandCards.length < 9) {
+            aiHandCards.push(aiDeckList.pop());
+        }
+
+        // 1. AIのカード召喚
+        aiHandCards = aiHandCards.filter(card => {
+            if (aiPp >= card.cost && enemyBoardCards.length < 5) {
+                aiPp -= card.cost;
+                enemyBoardCards.push({
+                    ...card,
+                    instanceId: 'ai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                    isEvolved: false,
+                    canAttack: false // AIの召喚ユニットも通常は召喚酔い
+                });
+                addBattleLog(`🤖 ${stageConfig.opponent}が『${card.name}』を召喚`);
+                return false;
+            }
+            return true;
+        });
+
+        // 2. AIの攻撃（前のターンから場にいるユニットが攻撃）
+        enemyBoardCards.forEach(aiCard => {
+            if (!aiCard.canAttack) {
+                aiCard.canAttack = true; // 次のターンから攻撃可能になる
+                return;
+            }
+            myHp = Math.max(0, myHp - aiCard.attack);
+            showDamagePop(document.querySelector('.my-leader'), aiCard.attack);
+            addBattleLog(`🤖 ${stageConfig.opponent}の『${aiCard.name}』の攻撃 (${aiCard.attack}ダメージ)`);
+        });
+
+        renderAll();
+
+        setTimeout(() => {
+            if (myHp <= 0) {
+                alert('DEFEAT... 敗北しました。');
+                window.location.href = 'home.html';
+                return;
+            }
+
+            // プレイヤーの次のターン開始処理
+            turnCount++;
+            if (maxPp < 10) maxPp++;
+            currentPp = maxPp;
+
+            // 自分の場のカードすべてを攻撃可能にする
+            myBoardCards.forEach(c => { c.canAttack = true; });
+
+            // 山札から1枚ドロー！
+            drawMyCard(false);
+
+            const cutin = document.getElementById('turn-cutin-overlay');
+            cutin.style.display = 'flex';
+            setTimeout(() => cutin.style.display = 'none', 1200);
+
+            renderAll();
+        }, 1000);
+    }
+</script>
+</body>
+</html>
